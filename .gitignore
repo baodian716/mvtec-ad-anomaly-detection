@@ -10,6 +10,8 @@ venv/
 data/mvtec_ad/
 data/imagenette2/
 data/labelme_sample/
+data/download/
+data/metal_nut_download/
 outputs/
 report/
 *.ckpt
@@ -28,3 +30,7 @@ Thumbs.db
 *.zip
 *.7z
 *.rar
+*.tar
+*.tar.gz
+*.tgz
+*.tar.xz
