@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Local datasets, model weights, caches, and generated runs
+data/mvtec_ad/
+data/imagenette2/
+data/labelme_sample/
+outputs/
+report/
+*.ckpt
+*.pth
+*.pt
+*.onnx
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local secrets and archives
+.env
+*.zip
+*.7z
+*.rar

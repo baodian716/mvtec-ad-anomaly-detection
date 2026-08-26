@@ -1,0 +1,4 @@
+variant,image_AUROC,pixel_AUROC,image_F1,pixel_F1,fit_seconds,color_AUROC_vs_good,color_F1,color_recall,color_misses,color_mean_score
+baseline,0.9985,0.9871,0.9891,0.8416,33.09,0.9938,0.9767,0.9545,1,0.7882
+illumination,0.9976,0.9865,0.9838,0.8375,117.92,0.9938,0.9545,0.9545,1,0.8004
+rotation,0.9995,0.9867,0.9892,0.8376,119.29,0.9979,0.9545,0.9545,1,0.8409
