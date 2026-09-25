@@ -23,7 +23,7 @@ from preprocess import INPUT_SIZE, load_input  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
-CATEGORIES = ["metal_nut", "hazelnut", "capsule", "carpet", "screw", "pill"]
+CATEGORIES = ["metal_nut", "screw", "pill"]
 MODELS = ["patchcore", "fastflow", "efficientad"]
 WEIGHTS, DATA = ROOT / "weights", ROOT / "data" / "mvtec_ad"
 
@@ -37,7 +37,8 @@ def export() -> None:
             model = classes[name].load_from_checkpoint(WEIGHTS / name / category / "model.ckpt",
                                                        weights_only=False, map_location="cpu").eval()
             with tempfile.TemporaryDirectory() as tmp:
-                path = model.to_onnx(tmp, input_size=(INPUT_SIZE, INPUT_SIZE))
+                # 關閉常數摺疊：否則 PatchCore 的記憶庫會多存一份轉置複本（檔案約大 60%）
+                path = model.to_onnx(tmp, input_size=(INPUT_SIZE, INPUT_SIZE), do_constant_folding=False)
                 target = WEIGHTS / "onnx" / name / f"{category}.onnx"
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(path, target)

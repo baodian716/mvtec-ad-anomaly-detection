@@ -131,7 +131,7 @@ EfficientAD 的 47 張漏判中有 46 張分數在 0.40～0.50；FastFlow 有 10
 
 PatchCore 與論文差距在 1 個百分點內，確認資料處理與評估流程正確；FastFlow 差距 5.1 個百分點，對應上方的 backbone 拆解實驗。
 
-**ONNX 一致性**：demo 使用的 ONNX 模型，在 6 類 × 3 模型共 1,212 次推論中與實驗分數逐張比對，平均差異 ≤ 0.001；只有 1 張（pill/scratch/022，實驗 0.4993、ONNX 0.5004）因剛好落在門檻邊界而判定不同（見 `results/onnx_parity.csv`）。
+**ONNX 一致性**：demo 使用的 ONNX 模型（metal_nut、screw、pill 3 類 × 3 模型），在 669 次推論中與實驗分數逐張比對，各模型平均差異 0.00002～0.0012；只有 1 張（pill/scratch/022，實驗 0.4993、ONNX 0.5004）因剛好落在門檻邊界而判定不同（見 `results/onnx_parity.csv`）。
 
 ## 互動 Demo
 
@@ -139,12 +139,12 @@ React 前端 + FastAPI 後端，模型以 ONNX Runtime 在 CPU 上推論（不�
 
 ![Demo 畫面](figures/demo_screenshot.png)
 
-- 選擇類別與測試影像，三模型並排顯示熱圖、分數、判定與推論時間
+- 選擇類別（metal_nut、screw、pill）與測試影像，三模型並排顯示熱圖、分數、判定與推論時間
 - **demo 按鈕**：一鍵切換到「三模型皆正確檢出」「三模型皆漏檢」「過殺」三個代表案例
 - **門檻滑桿**：即時顯示各模型的漏檢率、過殺率與取捨曲線
 - 標示本 demo 對應的 AOI 環節：涵蓋「前處理、模型推論、判定」；取像、人工複判、追溯未涵蓋
 
-部署時發現 Anomalib 匯出 ONNX 的前處理（resize 未開 antialias）與訓練時不同，會讓分數偏移；改為在 ONNX 外以相同方式縮放後，分數才與實驗一致（[`demo/backend/preprocess.py`](demo/backend/preprocess.py)）。
+部署時發現 Anomalib 匯出 ONNX 的前處理（resize 未開 antialias）與訓練時不同，同一張影像的分數會偏移約 0.02（例如 metal_nut/bent/000 的 PatchCore 分數 0.983 → 0.964）。改為在 ONNX 外以訓練時相同的方式縮放後，669 次推論與實驗分數的平均差異降到 0.0012 以下（[`demo/backend/preprocess.py`](demo/backend/preprocess.py)、[`results/onnx_parity.csv`](results/onnx_parity.csv)）。
 
 ## 限制
 
@@ -217,12 +217,20 @@ python src/batch_benchmark.py --models patchcore fastflow efficientad --categori
 python src/analyze_operating_points.py
 ```
 
-**Demo**：需要 `weights/<模型>/<類別>/model.ckpt`（訓練產生，不在 repo 中）與 `data/mvtec_ad/`。
+**Demo（直接使用已發布的模型）**：ONNX 模型與 demo 影像已發布在
+[Hugging Face：Haolian07/mvtec-ad-demo-assets](https://huggingface.co/Haolian07/mvtec-ad-demo-assets)，
+不需要資料集與訓練即可啟動（只需 `demo/backend/requirements.txt` 與 Node.js）：
 
 ```bash
-python demo/backend/export_onnx.py                              # 匯出 ONNX 並驗證一致性
+pip install -r demo/backend/requirements.txt huggingface_hub
 cd demo/frontend && npm install && npm run build && cd ../..    # 建置前端
-python demo/backend/server.py                                   # 開啟 http://localhost:7860
 ```
 
+```powershell
+$env:ASSETS_REPO = "Haolian07/mvtec-ad-demo-assets"   # 第一次用到某類別時自動下載該類別的模型
+python demo/backend/server.py                           # 開啟 http://localhost:7860
+```
+
+**Demo（從自己訓練的模型匯出）**：需要 `weights/<模型>/<類別>/model.ckpt` 與 `data/mvtec_ad/`，
+先執行 `python demo/backend/export_onnx.py` 匯出並驗證 ONNX，再以 `python demo/backend/server.py` 啟動；
 Windows 也可以直接雙擊 `start_demo.bat`。

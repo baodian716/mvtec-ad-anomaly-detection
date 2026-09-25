@@ -1,6 +1,11 @@
 """Demo 後端：FastAPI + ONNX Runtime（CPU），不需要 PyTorch。
 
-    python demo/backend/server.py          # 啟動後自動開啟 http://localhost:7860
+    python demo/backend/server.py          # 本機：讀 weights/onnx 與 data/mvtec_ad，並自動開啟瀏覽器
+
+在其他電腦部署時可設定環境變數：
+  ASSETS_REPO=Haolian07/mvtec-ad-demo-assets  模型與影像改由 Hugging Face 下載（第一次用到才下載，之後使用快取），
+                                               不需要本機的 weights/ 與 data/
+  HOST=0.0.0.0                                 讓區域網路內其他裝置可以連線；此時不會自動開啟瀏覽器
 
 API
   GET  /api/meta                  類別、模型、demo 案例
@@ -13,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 import sys
 import threading
 import time
@@ -34,14 +40,25 @@ sys.path.insert(0, str(Path(__file__).parent))
 from preprocess import load_input  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA, ONNX_DIR = ROOT / "data" / "mvtec_ad", ROOT / "weights" / "onnx"
 FRONTEND = ROOT / "demo" / "frontend" / "dist"
 PORT, THRESHOLD, VIEW = 7860, 0.5, 384
+HOST = os.environ.get("HOST", "127.0.0.1")
+ASSETS_REPO = os.environ.get("ASSETS_REPO")
+LOCAL_ASSETS = {"onnx": ROOT / "weights" / "onnx", "images": ROOT / "data" / "mvtec_ad"}
 
-CATEGORIES = ["metal_nut", "hazelnut", "capsule", "carpet", "screw", "pill"]
+
+def asset(rel: str) -> Path:
+    """取得 onnx/... 或 images/... 檔案：有設定 ASSETS_REPO 時從 Hugging Face 下載，否則讀本機。"""
+    if ASSETS_REPO:
+        from huggingface_hub import hf_hub_download
+        return Path(hf_hub_download(ASSETS_REPO, rel))
+    top, rest = rel.split("/", 1)
+    return LOCAL_ASSETS[top] / rest
+
+CATEGORIES = ["metal_nut", "screw", "pill"]
 MODELS = [("patchcore", "PatchCore"), ("fastflow", "FastFlow"), ("efficientad", "EfficientAD")]
 DEMO_CASES = [  # 分數皆可在 results/per_image_predictions.csv 查到
-    {"label": "三模型皆正確檢出", "category": "hazelnut", "image": "print/002.png", "kind": "ok"},
+    {"label": "三模型皆正確檢出", "category": "metal_nut", "image": "color/012.png", "kind": "ok"},
     {"label": "三模型皆漏檢", "category": "pill", "image": "crack/024.png", "kind": "escape"},
     {"label": "良品被誤判（過殺）", "category": "screw", "image": "good/000.png", "kind": "overkill"},
 ]
@@ -80,7 +97,7 @@ def to_data_url(image: np.ndarray) -> str:
 
 @lru_cache(maxsize=None)
 def session(model: str, category: str) -> ort.InferenceSession:
-    sess = ort.InferenceSession(str(ONNX_DIR / model / f"{category}.onnx"), providers=["CPUExecutionProvider"])
+    sess = ort.InferenceSession(str(asset(f"onnx/{model}/{category}.onnx")), providers=["CPUExecutionProvider"])
     sess.run(None, {"input": np.zeros((1, 3, 256, 256), np.float32)})  # 暖機
     return sess
 
@@ -121,12 +138,13 @@ class InferRequest(BaseModel):
 
 @app.post("/api/infer")
 def infer(req: InferRequest):
-    if req.image not in set(allowed_images(req.category).image):  # 只允許清單內的影像，避免任意路徑
+    listed = allowed_images(req.category).set_index("image")
+    if req.image not in listed.index:  # 只允許清單內的影像，避免任意路徑
         raise HTTPException(404, "unknown image")
-    path = DATA / req.category / "test" / req.image
     defect, file = req.image.split("/")
-    mask_path = DATA / req.category / "ground_truth" / defect / file.replace(".png", "_mask.png")
-    is_defect = mask_path.exists()
+    is_defect = bool(listed.loc[req.image, "gt_label"])
+    path = asset(f"images/{req.category}/test/{req.image}")
+    mask_path = asset(f"images/{req.category}/ground_truth/{defect}/{file.replace('.png', '_mask.png')}") if is_defect else None
 
     x = load_input(path)
     shown = np.asarray(Image.open(path).convert("RGB").resize((VIEW, VIEW), Image.BICUBIC), np.float32) / 255
@@ -157,5 +175,6 @@ if FRONTEND.exists():
 
 
 if __name__ == "__main__":
-    threading.Timer(2.0, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
-    uvicorn.run(app, host="127.0.0.1", port=PORT)
+    if HOST == "127.0.0.1":
+        threading.Timer(2.0, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
+    uvicorn.run(app, host=HOST, port=PORT)
