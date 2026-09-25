@@ -234,3 +234,10 @@ python demo/backend/server.py                           # 開啟 http://localhos
 **Demo（從自己訓練的模型匯出）**：需要 `weights/<模型>/<類別>/model.ckpt` 與 `data/mvtec_ad/`，
 先執行 `python demo/backend/export_onnx.py` 匯出並驗證 ONNX，再以 `python demo/backend/server.py` 啟動；
 Windows 也可以直接雙擊 `start_demo.bat`。
+
+## 授權
+
+- **程式碼**：[MIT License](LICENSE)
+- **MVTec AD 資料集、由其產生的圖片與訓練出的模型**：依原資料集授權
+  [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)，僅限非商業使用。
+  資料集出處：Bergmann et al., *The MVTec Anomaly Detection Dataset*, IJCV 2021。
