@@ -1,0 +1,8 @@
+# Demo 後端執行所需（不需要 PyTorch）
+fastapi
+uvicorn[standard]
+onnxruntime
+numpy
+pandas>=2.0,<3
+pillow
+scipy

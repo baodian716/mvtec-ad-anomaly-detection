@@ -14,6 +14,10 @@ data/download/
 data/metal_nut_download/
 outputs/
 report/
+weights/
+
+# Local tool settings (contain machine-specific paths)
+.claude/
 *.ckpt
 *.pth
 *.pt
